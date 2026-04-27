@@ -30,7 +30,7 @@ def generate_mermaid_chart(relationships):
 
 def generate_mermaid_sequence(relationships, max_lines=75):
     mermaid_code = "sequenceDiagram\n"
-    participants = set()
+    participants = {}
     messages = []
     
     count = 0
@@ -47,16 +47,20 @@ def generate_mermaid_sequence(relationships, max_lines=75):
         
         # Only meaningful calls
         if caller_safe and target_safe and str(target_class)[0].isupper():
-            participants.add(caller_safe)
-            participants.add(target_safe)
+            participants[caller_safe] = sanitize_label(caller)
+            participants[target_safe] = sanitize_label(target_class)
             messages.append(f"    {caller_safe}->>{target_safe}: {method_safe}()")
             count += 1
             
     # explicitly define participants first
-    for p in sorted(participants):
-        mermaid_code += f"    participant {p}\n"
+    for p in sorted(participants.keys()):
+        mermaid_code += f'    participant {p} as {participants[p]}\n'
         
     for m in messages:
         mermaid_code += f"{m}\n"
+        
+    if not messages:
+        mermaid_code += "    participant Unknown\n"
+        mermaid_code += "    Note over Unknown: No meaningful execution flow detected\n"
                 
     return mermaid_code
