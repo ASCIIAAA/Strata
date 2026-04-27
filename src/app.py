@@ -15,6 +15,28 @@ st.title("Software Archeology Refactoring Engine")
 
 uploaded_files = st.file_uploader("Upload Java Legacy Monoliths (.java files)", type="java", accept_multiple_files=True)
 
+def render_mermaid(mermaid_string):
+    html_code = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <script src="https://cdn.jsdelivr.net/npm/mermaid@9.4.3/dist/mermaid.min.js"></script>
+        <script>
+            mermaid.initialize({{ 
+                startOnLoad: true, 
+                theme: 'neutral',
+                securityLevel: 'loose'
+            }});
+        </script>
+    </head>
+    <body style="background-color: white; padding: 20px;">
+        <div class="mermaid">
+{mermaid_string.strip()}
+        </div>
+    </body>
+    </html>
+    """
+    components.html(html_code, height=800, scrolling=True)
 import matplotlib.pyplot as plt
 import networkx as nx
 import streamlit as st
