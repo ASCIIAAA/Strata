@@ -6,7 +6,7 @@ import io
 
 from parser_logic import parse_project
 from analyzer import build_code_graph, build_method_graph, find_god_objects, find_spaghetti_cycles, cluster_microservices, find_dead_code
-from visualizer import generate_mermaid_chart, generate_mermaid_sequence
+from visualizer import generate_mermaid_chart
 from cleaner import remove_dead_code
 from pdf_generator import generate_pdf_report
 
@@ -15,25 +15,16 @@ st.title("Software Archeology Refactoring Engine")
 
 uploaded_files = st.file_uploader("Upload Java Legacy Monoliths (.java files)", type="java", accept_multiple_files=True)
 
-def render_mermaid(mermaid_string):
-    html_code = f"""
-    <div id="mermaid-container" style="background-color: white; padding: 20px;">
-        <script type="module">
-            import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
-            mermaid.initialize({{ 
-                startOnLoad: true, 
-                theme: 'neutral',
-                securityLevel: 'loose',
-                maxTextSize: 900000,
-                flowchart: {{ useMaxWidth: false }}
-            }});
-        </script>
-        <pre class="mermaid">
-{mermaid_string.strip()}
-        </pre>
-    </div>
-    """
-    components.html(html_code, height=600, scrolling=True)
+import matplotlib.pyplot as plt
+import networkx as nx
+import streamlit as st
+
+def render_graph(G):
+    fig, ax = plt.subplots(figsize=(12, 8))  # bigger figure
+    pos = nx.spring_layout(G, k=0.5)         # better spacing
+    nx.draw(G, pos, with_labels=True, ax=ax)
+    
+    st.pyplot(fig)  # ✅ IMPORTANT (use fig, not plt)
 
 if uploaded_files:
     projects_dict = {}
@@ -74,12 +65,13 @@ if uploaded_files:
             st.write(rels)
 
     with tab2:
-        st.subheader("Architectural Dependency Map")
-        if len(rels) > 0:
-            mermaid_str = generate_mermaid_chart(rels)
-            render_mermaid(mermaid_str)
-        else:
-            st.warning("No inter-class dependencies found.")
+            st.subheader("Architectural Dependency Map")
+
+            if len(rels) > 0:
+                G_class = build_code_graph(rels)
+                render_graph(G_class)
+            else:
+                st.warning("No inter-class dependencies found.")
             
     with tab3:
         st.subheader("God Objects Detected")
@@ -96,13 +88,26 @@ if uploaded_files:
             st.success("No Cycles detected!")
             
     with tab4:
+        # ✅ PART 1: Microservices (RESTORE THIS)
         st.subheader("Microservice Grouping (Coupling Reduction)")
         for i, ms in enumerate(microservices):
-            st.info(f"Microservice Candidate {i+1}: {ms}")
-            
-        st.subheader("Sample Execution Flow (Sequence Diagram)")
-        seq_str = generate_mermaid_sequence(rels)
-        render_mermaid(seq_str)
+         st.info(f"Microservice {i+1}: {', '.join(sorted(ms))}")
+
+        # ✅ PART 2: Execution Flow (NEW FIX)
+        st.subheader("Sample Execution Flow")
+
+        count = 0
+        for rel in rels:
+            caller = rel['caller_class']
+            target = rel['qualifier']
+            method = rel['target_method']
+
+            if caller and target and method:
+                st.write(f"{caller} → {target}.{method}()")
+                count += 1
+
+                if count >= 15:  # limit output
+                    break
         
     with tab5:
         st.subheader("Archeology Report")
